@@ -90,8 +90,15 @@ for item in status_payload:
 	print ('	Latitude: ' + poi_data['Latitude'])
 	output_lat_pt = float(poi_data['Latitude'])
 	print('\n	Polygon:')
+	init = 0
 	for tp in polygon_data:
 		print ('	  ' + tp['Longitude'] + ', ' + tp['Latitude'])
+		if init == 0:
+			turning_point = tp['Longitude'] + ' ' + tp['Latitude']
+			init += 1
+		else:
+			turning_point = turning_point + ', ' + tp['Longitude'] + ' ' + tp['Latitude']
+
 	print('\n')
 	print('\n')
 	print('\n')
@@ -130,7 +137,6 @@ for item in status_payload:
 			"where ID = %s")
 
 		else:
-
 			update_string = (
 			"update Outage_Tracking "
 			"Set Title = %s, Map_Type = %s, Pin_Type = %s, Planned = %s, Start = %s, EstRestore = %s, Impact = %s, "
@@ -142,9 +148,47 @@ for item in status_payload:
 		update_cursor = update_conn.cursor(buffered=True)
 		update_cursor.execute(update_string, payload)
 		update_conn.commit()
+
+		print ('Got Here')
+
+		if result_test > 0:
+			Geom_query_string = (
+			"select * from Outage_Geometry where ID = '{0}' and "
+			"shape = ST_GeomFromText('POLYGON(({1}))', 4326) "
+			"order by SysChangeDate desc "
+			"limit 1".format(outage_id,turning_point)
+			)
+
+			Geom_query_conn = mysql.connector.connect(**conn_params)
+			Geom_query_cursor = query_conn.cursor()
+			Geom_query_cursor.execute(Geom_query_string)
+			Geom_rows = Geom_query_cursor.fetchall()
+			Geom_result_test = int(Geom_query_cursor.rowcount)
+			for row in Geom_rows:
+				print ('Geometry Result:  {0}'.format(row[0]))
+
+			if Geom_result_test > 0:
+				print ('	Geometry Already Exits For:  {0}'.format(outage_id))
+				print ('	No further update required.  Rolling SysChangeDate for last status check.')
+				update_polygon = (
+				"update Outage_Geometry "
+				"Set SysChangeDate = current_timestamp() where ID = '{0}'".format(outage_id)
+				)
+				update_cursor.execute(update_polygon)
+				update_conn.commit()
+
+			else:
+				update_polygon = (
+				"insert into Outage_Geometry (ID, Shape)"
+				"values ('{0}', ST_GeomFromText('POLYGON(({1}))', 4326))".format(outage_id,turning_point)
+				)
+				update_cursor.execute(update_polygon)
+				update_conn.commit()
+
+		Geom_query_cursor.close()
+		Geom_query_conn.close()
 		update_cursor.close()
 		update_conn.close()
-		print ('	Record update complete!\n')
 
 	else:
 
@@ -167,9 +211,16 @@ for item in status_payload:
 			"Cause, Status, Updated, Longitude, Latitude, Shape)"
 			"values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, ST_GeomFromText('POINT(%s %s)', 4326))")
 
+		update_polygon = (
+		"insert into Outage_Geometry (ID, Shape)"
+		"values ('{0}', ST_GeomFromText('POLYGON(({1}))', 4326))".format(outage_id,turning_point)
+		)
+
 		update_conn = mysql.connector.connect(**conn_params)
 		update_cursor = update_conn.cursor()
 		update_cursor.execute(update_string, payload)
+		update_conn.commit()
+		update_cursor.execute(update_polygon)
 		update_conn.commit()
 		update_cursor.close()
 		update_conn.close()
@@ -177,7 +228,7 @@ for item in status_payload:
 	query_cursor.close()
 	query_conn.close()
 
-	##raw_input("Press Enter to continue...")
+	#raw_input("Press Enter to continue...")
 
 # Clear up any old outages.
 tracking = 0
@@ -201,6 +252,10 @@ finalupdate_cursor.execute(cleanup_string)
 finalupdate_conn.commit()
 finalupdate_cursor.close()
 finalupdate_conn.close()
+
+
+
+
 
 
 
