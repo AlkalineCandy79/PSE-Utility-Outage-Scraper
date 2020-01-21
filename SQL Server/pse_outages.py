@@ -8,7 +8,7 @@
 # Author:      John Spence
 #
 # Created:      21 December 2019
-# Modified:     17 January 2020
+# Modified:     21 January 2020
 # Modification Purpose:  Added in the ability to do db cleanup removing old
 #                       outages that may exist past the boundaries of interest.
 #                       The query I am using is looking for a polygon intersect.
