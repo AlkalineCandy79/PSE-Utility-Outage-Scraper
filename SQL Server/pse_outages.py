@@ -296,6 +296,10 @@ if db_cleanup == 1:
     query_cursor = query_conn.cursor()
     query_result = query_cursor.execute(find_cleanupstring)
 
+    result_test = 0
+    for ID in query_result:
+        result_test += 1
+
     if result_test > 0:
 
         print ('\nPurging old outages not part of Bellevue...')
