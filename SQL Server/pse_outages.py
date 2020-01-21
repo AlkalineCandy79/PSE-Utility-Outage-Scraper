@@ -297,18 +297,16 @@ if db_cleanup == 1:
     query_result = query_cursor.execute(find_cleanupstring)
 
     result_test = 0
+
+    purge_listing = []
     for ID in query_result:
         result_test += 1
+        item = ID[0]
+        purge_listing.append(item)
 
     if result_test > 0:
 
         print ('\nPurging old outages not part of Bellevue...')
-
-        purge_listing = []
-
-        for ID in query_result:
-            item = ID[0]
-            purge_listing.append(item)
 
         query_cursor.close()
         query_conn.close()
@@ -317,32 +315,35 @@ if db_cleanup == 1:
         for pending in purge_listing:
             if tracking == 0:
             	remove_ID = '{0}'.format(pending)
-            	id_listing = "'{0}'".format(remove_ID)
+            	del_id = "'{0}'".format(remove_ID)
             	tracking += 1
             else:
                 remove_ID = '{0}'.format(pending)
-                id_listing = id_listing + ", '{0}'".format(remove_ID)
+                del_id = del_id + ", '{0}'".format(remove_ID)
                 tracking += 1
 
-        dbpurge_string = ("delete from [ITD].[PowerOutages]"
-        "where [ID] in ({})".format(id_listing))
-        finalupdate_conn = pyodbc.connect(conn_params)
-        finalupdate_cursor = finalupdate_conn.cursor()
-        finalupdate_cursor.execute(dbpurge_string)
-        finalupdate_conn.commit()
-        finalupdate_cursor.close()
-        finalupdate_conn.close()
+        if tracking > 0:
+            dbpurge_string = ("delete from [ITD].[PowerOutages]"
+            "where [ID] in ({})".format(del_id))
+            print (dbpurge_string)
+            finalupdate_conn = pyodbc.connect(conn_params)
+            finalupdate_cursor = finalupdate_conn.cursor()
+            finalupdate_cursor.execute(dbpurge_string)
+            finalupdate_conn.commit()
+            finalupdate_cursor.close()
+            finalupdate_conn.close()
 
-        dbpurge_string = ("delete from [ITD].[PowerOutages_Extent]"
-        "where [ID] in ({})".format(id_listing))
-        finalupdate_conn = pyodbc.connect(conn_params)
-        finalupdate_cursor = finalupdate_conn.cursor()
-        finalupdate_cursor.execute(dbpurge_string)
-        finalupdate_conn.commit()
-        finalupdate_cursor.close()
-        finalupdate_conn.close()
+            dbpurge_string = ("delete from [ITD].[PowerOutages_Extent]"
+            "where [ID] in ({})".format(del_id))
+            print (dbpurge_string)
+            finalupdate_conn = pyodbc.connect(conn_params)
+            finalupdate_cursor = finalupdate_conn.cursor()
+            finalupdate_cursor.execute(dbpurge_string)
+            finalupdate_conn.commit()
+            finalupdate_cursor.close()
+            finalupdate_conn.close()
 
-        print ('    Purge completed!')
+            print ('    Purge completed!')
 
     else:
         query_cursor.close()
